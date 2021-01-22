@@ -53,6 +53,10 @@ set(SRCS
         src/fg/fg/PassNode.cpp
         src/fg/fg/RenderTargetResourceEntry.cpp
         src/fg/fg/ResourceEntry.cpp
+        src/fg2/FrameGraph.cpp
+        src/fg2/Graph.cpp
+        src/fg2/Pass.cpp
+        src/fg2/PassNode.cpp
         src/Box.cpp
         src/Camera.cpp
         src/Color.cpp
@@ -107,6 +111,15 @@ set(PRIVATE_HDRS
         src/fg/fg/RenderTargetResourceEntry.h
         src/fg/fg/ResourceNode.h
         src/fg/fg/VirtualResource.h
+        src/fg2/details/Graph.h
+        src/fg2/details/PassNode.h
+        src/fg2/details/Utilities.h
+        src/fg2/FrameGraph.h
+        src/fg2/FrameGraphId.h
+        src/fg2/Pass.h
+        src/fg2/RenderTarget.h
+        src/fg2/Resource.h
+        src/fg2/Texture.h
         src/details/Allocators.h
         src/details/Camera.h
         src/details/ColorGrading.h
@@ -145,7 +158,8 @@ set(PRIVATE_HDRS
         src/ResourceAllocator.h
         src/ToneMapping.h
         src/UniformBuffer.h
-        src/upcast.h)
+        src/upcast.h
+)
 
 set(MATERIAL_SRCS
         src/materials/colorGrading/colorGrading.mat
@@ -314,7 +328,6 @@ if (DEFINED RESGEN_SOURCE_FLAGS)
     set_source_files_properties(${RESGEN_SOURCE} PROPERTIES COMPILE_FLAGS ${RESGEN_SOURCE_FLAGS})
 endif()
 
-set(DATA_BINS)
 file(MAKE_DIRECTORY "${GENERATION_ROOT}/generated/data/")
 
 set(output_path "${GENERATION_ROOT}/generated/data/dfg.inc")

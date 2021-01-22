@@ -24,6 +24,8 @@
 
 #include "private/backend/CommandStream.h"
 
+#include "fg2/details/Graph.h"
+
 using namespace filament;
 using namespace backend;
 
@@ -446,4 +448,117 @@ TEST_F(FrameGraphTest, MoveGenericResource) {
     EXPECT_EQ(h[0], h[1]);
     EXPECT_EQ(h[1], h[3]);
     EXPECT_EQ(h[3], h[0]);
+}
+
+
+class Node : public fg2::Graph::Node {
+    const char *mName;
+    bool mCulledCalled = false;
+    char const* getName() const override { return mName; }
+    void onCulled() override { mCulledCalled = true; }
+public:
+    Node(fg2::Graph& graph, const char* name) noexcept : fg2::Graph::Node(graph), mName(name) { }
+    bool isCulledCalled() const noexcept { return mCulledCalled; }
+};
+
+TEST(FrameGraph2Test, GraphSimple) {
+    using namespace fg2;
+
+    Graph graph;
+    Node* n0 = new Node(graph, "node 0");
+    Node* n1 = new Node(graph, "node 1");
+    Node* n2 = new Node(graph, "node 2");
+
+    n1->addReferenceTo(n0);
+    n2->addReferenceTo(n1);
+    n2->makeLeaf();
+
+    graph.cull();
+
+    //graph.export_graphviz(utils::slog.d);
+
+    EXPECT_FALSE(n2->isCulled());
+    EXPECT_FALSE(n1->isCulled());
+    EXPECT_FALSE(n0->isCulled());
+    EXPECT_FALSE(n2->isCulledCalled());
+    EXPECT_FALSE(n1->isCulledCalled());
+    EXPECT_FALSE(n0->isCulledCalled());
+
+    EXPECT_EQ(n0->getRefCount(), 1);
+    EXPECT_EQ(n1->getRefCount(), 1);
+    EXPECT_EQ(n2->getRefCount(), 1);
+}
+
+TEST(FrameGraph2Test, GraphCulling1) {
+    using namespace fg2;
+
+    Graph graph;
+    Node* n0 = new Node(graph, "node 0");
+    Node* n1 = new Node(graph, "node 1");
+    Node* n2 = new Node(graph, "node 2");
+    Node* n1_0 = new Node(graph, "node 1.0");
+
+    n1->addReferenceTo(n0);
+    n2->addReferenceTo(n1);
+    n2->makeLeaf();
+    n1_0->addReferenceTo(n1);
+
+    graph.cull();
+
+    //graph.export_graphviz(utils::slog.d);
+
+    EXPECT_TRUE(n1_0->isCulled());
+    EXPECT_TRUE(n1_0->isCulledCalled());
+
+    EXPECT_FALSE(n2->isCulled());
+    EXPECT_FALSE(n1->isCulled());
+    EXPECT_FALSE(n0->isCulled());
+    EXPECT_FALSE(n2->isCulledCalled());
+    EXPECT_FALSE(n1->isCulledCalled());
+    EXPECT_FALSE(n0->isCulledCalled());
+
+    EXPECT_EQ(n0->getRefCount(), 1);
+    EXPECT_EQ(n1->getRefCount(), 1);
+    EXPECT_EQ(n2->getRefCount(), 1);
+}
+
+TEST(FrameGraph2Test, GraphCulling2) {
+    using namespace fg2;
+
+    Graph graph;
+    Node* n0 = new Node(graph, "node 0");
+    Node* n1 = new Node(graph, "node 1");
+    Node* n2 = new Node(graph, "node 2");
+    Node* n1_0 = new Node(graph, "node 1.0");
+    Node* n1_0_0 = new Node(graph, "node 1.0.0");
+    Node* n1_0_1 = new Node(graph, "node 1.0.0");
+
+    n1->addReferenceTo(n0);
+    n2->addReferenceTo(n1);
+    n2->makeLeaf();
+    n1_0->addReferenceTo(n1);
+    n1_0_0->addReferenceTo(n1_0);
+    n1_0_1->addReferenceTo(n1_0);
+
+    graph.cull();
+
+    //graph.export_graphviz(utils::slog.d);
+
+    EXPECT_TRUE(n1_0->isCulled());
+    EXPECT_TRUE(n1_0_0->isCulled());
+    EXPECT_TRUE(n1_0_1->isCulled());
+    EXPECT_TRUE(n1_0->isCulledCalled());
+    EXPECT_TRUE(n1_0_0->isCulledCalled());
+    EXPECT_TRUE(n1_0_1->isCulledCalled());
+
+    EXPECT_FALSE(n2->isCulled());
+    EXPECT_FALSE(n1->isCulled());
+    EXPECT_FALSE(n0->isCulled());
+    EXPECT_FALSE(n2->isCulledCalled());
+    EXPECT_FALSE(n1->isCulledCalled());
+    EXPECT_FALSE(n0->isCulledCalled());
+
+    EXPECT_EQ(n0->getRefCount(), 1);
+    EXPECT_EQ(n1->getRefCount(), 1);
+    EXPECT_EQ(n2->getRefCount(), 1);
 }
