@@ -46,9 +46,7 @@ layout(location = 0) out vec4 fragColor;
 uniform sampler2D tex;
 void main() {
     float sourceLod = 0.0;
-    int targetLod = 1;
-    vec2 fbsize = vec2(textureSize(tex, targetLod));
-    vec2 uv = (gl_FragCoord.xy + 0.5) / fbsize;
+    vec2 uv = (gl_FragCoord.xy + 0.5) / vec2(256);
     fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0)).rgba;
 })";
 
@@ -57,9 +55,7 @@ layout(location = 0) out vec4 fragColor;
 uniform sampler2D tex;
 void main() {
     float sourceLod = 1.0;
-    int targetLod = 0;
-    vec2 fbsize = vec2(textureSize(tex, targetLod));
-    vec2 uv = (gl_FragCoord.xy + 0.5) / fbsize;
+    vec2 uv = (gl_FragCoord.xy + 0.5) / vec2(512);
     fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0)).grba;
     fragColor.a = 0.5;
 })";
