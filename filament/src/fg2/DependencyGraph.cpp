@@ -14,55 +14,49 @@
  * limitations under the License.
  */
 
-#include "fg2/details/Graph.h"
+#include "fg2/details/DependencyGraph.h"
 
 namespace filament::fg2 {
 
-Graph::Graph() noexcept = default;
+DependencyGraph::DependencyGraph() noexcept = default;
 
-uint32_t Graph::generateNodeId() noexcept {
+uint32_t DependencyGraph::generateNodeId() noexcept {
     return mNodes.size();
 }
 
-void Graph::registerNode(Node* node) noexcept {
+void DependencyGraph::registerNode(Node* node) noexcept {
     // node* is not fully constructed here
     mNodes.push_back(node);
 }
 
-void Graph::cull() noexcept {
+void DependencyGraph::cull() noexcept {
     auto& nodes = mNodes;
-    // update the reference counts
-    for (Node* pNode : nodes) {
-        auto& references = pNode->mReferences;
-        for (Node* pReaders : references) {
-            pReaders->mRefCount++;
-        }
-    }
+
     // cull nodes with a 0 reference count
     std::vector<Node*> stack;
-    for (Node* pNode : nodes) {
-        if (pNode->mRefCount == 0) {
+    stack.reserve(nodes.size());
+    for (Node* const pNode : nodes) {
+        if (pNode->getRefCount() == 0) {
             stack.push_back(pNode);
         }
     }
     while (!stack.empty()) {
         Node* const pNode = stack.back();
         stack.pop_back();
-        auto& references = pNode->mReferences;
-        for (Node* pReference : references) {
-            assert(pReference->mRefCount >= 1);
-            if (--pReference->mRefCount == 0) {
-                stack.push_back(pReference);
+        auto const& links = pNode->getLinks();
+        for (Node* pLinkedNode : links) {
+            if (pLinkedNode->decRef() == 0) {
+                stack.push_back(pLinkedNode);
             }
         }
         pNode->onCulled();
     }
 }
 
-void Graph::export_graphviz(utils::io::ostream& out, char const* name) {
+void DependencyGraph::export_graphviz(utils::io::ostream& out, char const* name) {
 #ifndef NDEBUG
-    const char* label = name ? name : "graph";
-    out << "digraph \"" << label << "\" {\n";
+    const char* graphName = name ? name : "graph";
+    out << "digraph \"" << graphName << "\" {\n";
     out << "rankdir = LR\n";
     out << "bgcolor = black\n";
     out << "node [shape=rectangle, fontname=\"helvetica\", fontsize=10]\n\n";
@@ -71,10 +65,10 @@ void Graph::export_graphviz(utils::io::ostream& out, char const* name) {
 
     for (Node const* node : nodes) {
         uint32_t id = node->getId();
-        const char* const label = node->getName();
+        const char* const nodeName = node->getName();
         uint32_t refCount = node->getRefCount();
 
-        out << "\"N" << id << "\" [label=\"" << label
+        out << "\"N" << id << "\" [label=\"" << nodeName
             << "\\nrefs: " << refCount
             << "\\nseq: " << id
             << "\", style=filled, fillcolor="
@@ -85,7 +79,7 @@ void Graph::export_graphviz(utils::io::ostream& out, char const* name) {
     for (Node const* node : nodes) {
         uint32_t id = node->getId();
         out << "N" << id << " -> { ";
-        for (Node const* ref : node->mReferences) {
+        for (Node const* ref : node->getLinks()) {
             out << "N" << ref->getId() << " ";
         }
         out << "} [color=red2]\n";
@@ -97,31 +91,41 @@ void Graph::export_graphviz(utils::io::ostream& out, char const* name) {
 
 // ------------------------------------------------------------------------------------------------
 
-Graph::Node::Node(Graph& graph) noexcept : mId(graph.generateNodeId()) {
+DependencyGraph::Node::Node(DependencyGraph& graph) noexcept : mId(graph.generateNodeId()) {
     graph.registerNode(this);
 }
 
-Graph::Node::~Node() noexcept = default;
+DependencyGraph::Node::~Node() noexcept = default;
 
-void Graph::Node::addReferenceTo(Node* node) noexcept {
-    mReferences.push_back(node);
+void DependencyGraph::Node::linkTo(Node* node) noexcept {
+    node->mRefCount++;
+    mLinks.push_back(node);
 }
 
-void Graph::Node::makeLeaf() noexcept {
+void DependencyGraph::Node::makeLeaf() noexcept {
     assert(!mRefCount);
     mRefCount = 1;
 }
 
-uint32_t Graph::Node::getRefCount() const noexcept {
+std::vector<DependencyGraph::Node*> const& DependencyGraph::Node::getLinks() const noexcept {
+    return mLinks;
+}
+
+uint32_t DependencyGraph::Node::getRefCount() const noexcept {
     return mRefCount;
 }
 
-uint32_t Graph::Node::getId() const noexcept {
+uint32_t DependencyGraph::Node::getId() const noexcept {
     return mId;
 }
 
-bool Graph::Node::isCulled() const noexcept {
+bool DependencyGraph::Node::isCulled() const noexcept {
     return mRefCount == 0;
+}
+
+uint32_t DependencyGraph::Node::decRef() noexcept {
+    assert(mRefCount >= 1);
+    return --mRefCount;
 }
 
 } // namespace filament::fg2

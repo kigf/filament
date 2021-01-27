@@ -23,7 +23,7 @@
 #include "fg2/Resource.h"
 #include "fg2/Texture.h"
 
-#include "fg2/details/Graph.h"
+#include "fg2/details/DependencyGraph.h"
 
 #include "details/Allocators.h"
 
@@ -304,14 +304,14 @@ public:
 
     // no user serviceable parts below
     LinearAllocatorArena& getArena() noexcept { return mArena; }
-    Graph& getGraph() noexcept { return mGraph; }
+    DependencyGraph& getGraph() noexcept { return mGraph; }
 
 private:
     PassNode& createPass(const char* name, PassExecutor* base) noexcept;
 
     ResourceAllocatorInterface& mResourceAllocator;
     LinearAllocatorArena mArena;
-    Graph mGraph;
+    DependencyGraph mGraph;
 
     std::vector<PassNode> mPassNodes;
 };

@@ -54,7 +54,7 @@ set(SRCS
         src/fg/fg/RenderTargetResourceEntry.cpp
         src/fg/fg/ResourceEntry.cpp
         src/fg2/FrameGraph.cpp
-        src/fg2/Graph.cpp
+        src/fg2/DependencyGraph.cpp
         src/fg2/Pass.cpp
         src/fg2/PassNode.cpp
         src/Box.cpp
@@ -111,7 +111,7 @@ set(PRIVATE_HDRS
         src/fg/fg/RenderTargetResourceEntry.h
         src/fg/fg/ResourceNode.h
         src/fg/fg/VirtualResource.h
-        src/fg2/details/Graph.h
+        src/fg2/details/DependencyGraph.h
         src/fg2/details/PassNode.h
         src/fg2/details/Utilities.h
         src/fg2/FrameGraph.h

@@ -18,12 +18,12 @@
 #define TNT_FILAMENT_FG2_PASSNODE_H
 
 #include "fg2/FrameGraph.h"
-#include "fg2/details/Graph.h"
+#include "fg2/details/DependencyGraph.h"
 #include "fg2/details/Utilities.h"
 
 namespace filament::fg2 {
 
-class PassNode : private Graph::Node {
+class PassNode : private DependencyGraph::Node {
 public:
     PassNode(FrameGraph& fg, const char* name, uint32_t id, PassExecutor* base) noexcept;
     PassNode(PassNode&& rhs) noexcept;
@@ -39,7 +39,7 @@ public:
     UniquePtr<PassExecutor, LinearAllocatorArena> base; // type eraser for calling execute()
 
 private:
-    // virtuals from Graph::Node
+    // virtuals from DependencyGraph::Node
     char const* getName() const override { return name; }
     void onCulled() override;
 

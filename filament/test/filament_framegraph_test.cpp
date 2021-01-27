@@ -24,7 +24,7 @@
 
 #include "private/backend/CommandStream.h"
 
-#include "fg2/details/Graph.h"
+#include "fg2/details/DependencyGraph.h"
 
 using namespace filament;
 using namespace backend;
@@ -451,26 +451,26 @@ TEST_F(FrameGraphTest, MoveGenericResource) {
 }
 
 
-class Node : public fg2::Graph::Node {
+class Node : public fg2::DependencyGraph::Node {
     const char *mName;
     bool mCulledCalled = false;
     char const* getName() const override { return mName; }
     void onCulled() override { mCulledCalled = true; }
 public:
-    Node(fg2::Graph& graph, const char* name) noexcept : fg2::Graph::Node(graph), mName(name) { }
+    Node(fg2::DependencyGraph& graph, const char* name) noexcept : fg2::DependencyGraph::Node(graph), mName(name) { }
     bool isCulledCalled() const noexcept { return mCulledCalled; }
 };
 
 TEST(FrameGraph2Test, GraphSimple) {
     using namespace fg2;
 
-    Graph graph;
+    DependencyGraph graph;
     Node* n0 = new Node(graph, "node 0");
     Node* n1 = new Node(graph, "node 1");
     Node* n2 = new Node(graph, "node 2");
 
-    n1->addReferenceTo(n0);
-    n2->addReferenceTo(n1);
+    n1->linkTo(n0);
+    n2->linkTo(n1);
     n2->makeLeaf();
 
     graph.cull();
@@ -492,16 +492,16 @@ TEST(FrameGraph2Test, GraphSimple) {
 TEST(FrameGraph2Test, GraphCulling1) {
     using namespace fg2;
 
-    Graph graph;
+    DependencyGraph graph;
     Node* n0 = new Node(graph, "node 0");
     Node* n1 = new Node(graph, "node 1");
     Node* n2 = new Node(graph, "node 2");
     Node* n1_0 = new Node(graph, "node 1.0");
 
-    n1->addReferenceTo(n0);
-    n2->addReferenceTo(n1);
+    n1->linkTo(n0);
+    n2->linkTo(n1);
     n2->makeLeaf();
-    n1_0->addReferenceTo(n1);
+    n1_0->linkTo(n1);
 
     graph.cull();
 
@@ -525,7 +525,7 @@ TEST(FrameGraph2Test, GraphCulling1) {
 TEST(FrameGraph2Test, GraphCulling2) {
     using namespace fg2;
 
-    Graph graph;
+    DependencyGraph graph;
     Node* n0 = new Node(graph, "node 0");
     Node* n1 = new Node(graph, "node 1");
     Node* n2 = new Node(graph, "node 2");
@@ -533,12 +533,12 @@ TEST(FrameGraph2Test, GraphCulling2) {
     Node* n1_0_0 = new Node(graph, "node 1.0.0");
     Node* n1_0_1 = new Node(graph, "node 1.0.0");
 
-    n1->addReferenceTo(n0);
-    n2->addReferenceTo(n1);
+    n1->linkTo(n0);
+    n2->linkTo(n1);
     n2->makeLeaf();
-    n1_0->addReferenceTo(n1);
-    n1_0_0->addReferenceTo(n1_0);
-    n1_0_1->addReferenceTo(n1_0);
+    n1_0->linkTo(n1);
+    n1_0_0->linkTo(n1_0);
+    n1_0_1->linkTo(n1_0);
 
     graph.cull();
 
