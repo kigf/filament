@@ -48,8 +48,7 @@ void main() {
     vec2 texsize = textureSize(tex, 0);
     float sourceLod = 0.0;
     vec2 uv = (gl_FragCoord.xy + 0.5) / (texsize / 2.0);
-    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0));
-    fragColor.rgb *= distance(uv, vec2(0.5));
+    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(-1, -1));
 })";
 
 static std::string upsampleFs = R"(#version 450 core
@@ -59,22 +58,24 @@ void main() {
     vec2 texsize = vec2(textureSize(tex, 0));
     float sourceLod = 1.0;
     vec2 uv = (gl_FragCoord.xy + 0.5) / texsize;
-    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0));
+    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(-1, -1));
     fragColor.a = 0.5;
 })";
 
 static uint32_t goldenPixelValue = 0;
+
+static const int kTexSize = 512;
 
 namespace test {
 
 using namespace filament;
 using namespace filament::backend;
 
-static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt, uint32_t w, uint32_t h) {
-    const size_t size = w * h * 4;
+static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt) {
+    const size_t size = kTexSize * kTexSize * 4;
     void* buffer = calloc(1, size);
     auto cb = [](void* buffer, size_t size, void* user) {
-        int w = 512, h = 512; // TODO
+        int w = kTexSize, h = kTexSize;
         uint32_t* texels = (uint32_t*) buffer;
         goldenPixelValue = texels[0];
         #ifndef IOS
@@ -85,7 +86,7 @@ static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt, uint32_t 
         #endif
     };
     PixelBufferDescriptor pb(buffer, size, PixelDataFormat::RGBA, PixelDataType::UBYTE, cb);
-    dapi.readPixels(rt, 0, 0, w, h, std::move(pb));
+    dapi.readPixels(rt, 0, 0, kTexSize, kTexSize, std::move(pb));
 }
 
 TEST_F(BackendTest, FeedbackLoops) {
@@ -125,8 +126,8 @@ TEST_F(BackendTest, FeedbackLoops) {
                     2,                                  // levels
                     TextureFormat::RGBA8,               // format
                     1,                                  // samples
-                    512,                                // width
-                    512,                                // height
+                    kTexSize,                           // width
+                    kTexSize,                           // height
                     1,                                  // depth
                     usage);                             // usage
 
@@ -135,8 +136,8 @@ TEST_F(BackendTest, FeedbackLoops) {
         for (uint8_t level = 0; level < 2; level++) {
             renderTargets[level] = getDriverApi().createRenderTarget(
                     TargetBufferFlags::COLOR,
-                    256,                                       // width of miplevel
-                    256,                                       // height of miplevel
+                    kTexSize / 2,                              // width of miplevel
+                    kTexSize / 2,                              // height of miplevel
                     1,                                         // samples
                     { texture, level, 0 },                     // color level
                     {},                                        // depth
@@ -144,13 +145,13 @@ TEST_F(BackendTest, FeedbackLoops) {
         }
 
         // Fill the base level of the texture with interesting colors.
-        const size_t size = 512 * 512 * 4;
+        const size_t size = kTexSize * kTexSize * 4;
         uint8_t* buffer = (uint8_t*) malloc(size);
-        for (int r = 0, i = 0; r < 512; r++) {
-            for (int c = 0; c < 512; c++, i += 4) {
+        for (int r = 0, i = 0; r < kTexSize; r++) {
+            for (int c = 0; c < kTexSize; c++, i += 4) {
                 buffer[i + 0] = 0x10;
-                buffer[i + 1] = 0xff * r / 511;
-                buffer[i + 2] = 0xff * c / 511;
+                buffer[i + 1] = 0xff * r / (kTexSize - 1);
+                buffer[i + 2] = 0xff * c / (kTexSize - 1);
                 buffer[i + 3] = 0xf0;
             }
          }
@@ -158,7 +159,7 @@ TEST_F(BackendTest, FeedbackLoops) {
         PixelBufferDescriptor pb(buffer, size, PixelDataFormat::RGBA, PixelDataType::UBYTE, cb);
 
         // Upload texture data.
-        getDriverApi().update2DImage(texture, 0, 0, 0, 512, 512, std::move(pb));
+        getDriverApi().update2DImage(texture, 0, 0, 0, kTexSize, kTexSize, std::move(pb));
 
         RenderPassParams params = {};
         params.viewport.left = 0;
@@ -188,8 +189,8 @@ TEST_F(BackendTest, FeedbackLoops) {
 
         // Downsample pass.
         state.rasterState.disableBlending();
-        params.viewport.width = 256;
-        params.viewport.height = 256;
+        params.viewport.width = kTexSize / 2;
+        params.viewport.height = kTexSize / 2;
         state.program = downsampleProgram;
         // getDriverApi().setMinMaxLevels(texture, 0, 0);
         getDriverApi().beginRenderPass(renderTargets[1], params);
@@ -199,8 +200,8 @@ TEST_F(BackendTest, FeedbackLoops) {
         // Upsample pass.
         state.rasterState.blendFunctionSrcRGB = BlendFunction::SRC_ALPHA;
         state.rasterState.blendFunctionDstRGB = BlendFunction::ONE_MINUS_SRC_ALPHA;
-        params.viewport.width = 512;
-        params.viewport.height = 512;
+        params.viewport.width = kTexSize;
+        params.viewport.height = kTexSize;
         state.program = upsampleProgram;
         // getDriverApi().setMinMaxLevels(texture, 1, 1);
         getDriverApi().beginRenderPass(renderTargets[0], params);
@@ -208,7 +209,7 @@ TEST_F(BackendTest, FeedbackLoops) {
         getDriverApi().endRenderPass();
 
         // Read back the current render target.
-        dumpScreenshot(getDriverApi(), renderTargets[0], 512, 512);
+        dumpScreenshot(getDriverApi(), renderTargets[0]);
 
         getDriverApi().flush();
         getDriverApi().commit(swapChain);
@@ -226,7 +227,7 @@ TEST_F(BackendTest, FeedbackLoops) {
     executeCommands();
     getDriver().purge();
 
-    const uint32_t expected = 0xf000ff10;
+    const uint32_t expected = 0x80007f87;
     printf("Pixel value is %8.8x, Expected %8.8x\n", goldenPixelValue, expected);
     EXPECT_EQ(goldenPixelValue, expected);
 }
