@@ -151,6 +151,13 @@ public:
          */
         template<typename RESOURCE>
         typename RESOURCE::Descriptor const& getDescriptor(FrameGraphId<RESOURCE> handle) const;
+
+    private:
+        friend class FrameGraph;
+        Builder(FrameGraph& fg, PassNode& pass) noexcept;
+        ~Builder() noexcept;
+        FrameGraph& mFrameGraph;
+        PassNode& mPass;
     };
 
     // --------------------------------------------------------------------------------------------
@@ -225,7 +232,6 @@ public:
      */
     template<typename Data, typename Setup, typename Execute>
     Pass<Data, Execute>& addPass(const char* name, Setup setup, Execute&& execute);
-
 
     /**
      * Allocates concrete resources and culls unreferenced passes.
@@ -307,7 +313,7 @@ public:
     DependencyGraph& getGraph() noexcept { return mGraph; }
 
 private:
-    PassNode& createPass(const char* name, PassExecutor* base) noexcept;
+    Builder addPassInternal(const char* name, PassExecutor* base) noexcept;
 
     ResourceAllocatorInterface& mResourceAllocator;
     LinearAllocatorArena mArena;
@@ -323,12 +329,8 @@ Pass<Data, Execute>& FrameGraph::addPass(char const* name, Setup setup, Execute&
     // create the FrameGraph pass
     auto* const pass = mArena.make<Pass<Data, Execute>>(std::forward<Execute>(execute));
 
-    // record in our pass list
-    PassNode& node = createPass(name, pass);
-
-    // call the setup code, which will declare used resources
-//    Builder builder(*this, node);
-//    setup(builder, pass->getData());
+    Builder builder(addPassInternal(name, pass));
+    setup(builder, pass->getData());
 
     // return a reference to the pass to the user
     return *pass;

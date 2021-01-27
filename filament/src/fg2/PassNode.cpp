@@ -18,8 +18,8 @@
 
 namespace filament::fg2 {
 
-PassNode::PassNode(FrameGraph& fg, const char* name, uint32_t id, PassExecutor* base) noexcept
-        : DependencyGraph::Node(fg.getGraph()), name(name), id(id), base(base, fg.getArena()) {
+PassNode::PassNode(FrameGraph& fg, const char* name, PassExecutor* base) noexcept
+        : DependencyGraph::Node(fg.getGraph()), name(name), base(base, fg.getArena()) {
 }
 
 PassNode::PassNode(PassNode&& rhs) noexcept = default;

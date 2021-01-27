@@ -19,6 +19,14 @@
 
 namespace filament::fg2 {
 
+FrameGraph::Builder::Builder(FrameGraph& fg, PassNode& pass) noexcept
+        : mFrameGraph(fg), mPass(pass) {
+}
+
+FrameGraph::Builder::~Builder() noexcept = default;
+
+// ------------------------------------------------------------------------------------------------
+
 FrameGraph::FrameGraph(ResourceAllocatorInterface& resourceAllocator)
         : mResourceAllocator(resourceAllocator),
           mArena("FrameGraph Arena", 131072)
@@ -26,7 +34,6 @@ FrameGraph::FrameGraph(ResourceAllocatorInterface& resourceAllocator)
 }
 
 FrameGraph::~FrameGraph() = default;
-
 
 FrameGraph& FrameGraph::compile() noexcept {
     return *this;
@@ -43,10 +50,9 @@ FrameGraphId<Texture> FrameGraph::import(char const* name, Texture::Descriptor c
     return FrameGraphId<Texture>();
 }
 
-PassNode& FrameGraph::createPass(char const* name, PassExecutor* base) noexcept {
-    auto& passNodes = mPassNodes;
-    const uint32_t id = (uint32_t)passNodes.size();
-    return passNodes.emplace_back(*this, name, id, base);
+FrameGraph::Builder FrameGraph::addPassInternal(char const* name, PassExecutor* base) noexcept {
+    // record in our pass list and create the builder
+    return Builder(*this, mPassNodes.emplace_back(*this, name, base));
 }
 
 } // namespace filament::fg2

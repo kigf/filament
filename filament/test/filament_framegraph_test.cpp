@@ -24,6 +24,7 @@
 
 #include "private/backend/CommandStream.h"
 
+#include "fg2/FrameGraph.h"
 #include "fg2/details/DependencyGraph.h"
 
 using namespace filament;
@@ -561,4 +562,17 @@ TEST(FrameGraph2Test, GraphCulling2) {
     EXPECT_EQ(n0->getRefCount(), 1);
     EXPECT_EQ(n1->getRefCount(), 1);
     EXPECT_EQ(n2->getRefCount(), 1);
+}
+
+TEST(FrameGraph2Test, Simple) {
+    using namespace fg2;
+    MockResourceAllocator resourceAllocator;
+    fg2::FrameGraph fg(resourceAllocator);
+    struct Data {
+    };
+    auto& pass = fg.addPass<Data>("test",
+            [&](fg2::FrameGraph::Builder& builder, auto& data) {
+            },
+            [=](Resource const& resources, auto const& data, backend::DriverApi& driver) {
+            });
 }

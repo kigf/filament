@@ -25,7 +25,7 @@ namespace filament::fg2 {
 
 class PassNode : private DependencyGraph::Node {
 public:
-    PassNode(FrameGraph& fg, const char* name, uint32_t id, PassExecutor* base) noexcept;
+    PassNode(FrameGraph& fg, const char* name, PassExecutor* base) noexcept;
     PassNode(PassNode&& rhs) noexcept;
     ~PassNode() override;
 
@@ -35,7 +35,6 @@ public:
 
     // constants
     const char* const name = nullptr;                   // our name
-    const uint32_t id = 0;                              // index in the mPassNodes (for debugging and moveResource)
     UniquePtr<PassExecutor, LinearAllocatorArena> base; // type eraser for calling execute()
 
 private:
