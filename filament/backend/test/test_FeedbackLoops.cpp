@@ -45,18 +45,21 @@ static std::string downsampleFs = R"(#version 450 core
 layout(location = 0) out vec4 fragColor;
 uniform sampler2D tex;
 void main() {
+    vec2 texsize = textureSize(tex, 0);
     float sourceLod = 0.0;
-    vec2 uv = (gl_FragCoord.xy + 0.5) / vec2(256);
-    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0)).rgba;
+    vec2 uv = (gl_FragCoord.xy + 0.5) / (texsize / 2.0);
+    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0));
+    fragColor.rgb *= distance(uv, vec2(0.5));
 })";
 
 static std::string upsampleFs = R"(#version 450 core
 layout(location = 0) out vec4 fragColor;
 uniform sampler2D tex;
 void main() {
+    vec2 texsize = vec2(textureSize(tex, 0));
     float sourceLod = 1.0;
-    vec2 uv = (gl_FragCoord.xy + 0.5) / vec2(512);
-    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0)).grba;
+    vec2 uv = (gl_FragCoord.xy + 0.5) / texsize;
+    fragColor = textureLodOffset(tex, uv, sourceLod, ivec2(0, 0));
     fragColor.a = 0.5;
 })";
 
