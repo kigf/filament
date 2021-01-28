@@ -64,7 +64,8 @@ void main() {
 
 static uint32_t goldenPixelValue = 0;
 
-static const int kTexSize = 512;
+static const int kTexWidth = 360;
+static const int kTexHeight = 375;
 
 namespace test {
 
@@ -72,10 +73,10 @@ using namespace filament;
 using namespace filament::backend;
 
 static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt) {
-    const size_t size = kTexSize * kTexSize * 4;
+    const size_t size = kTexWidth * kTexHeight * 4;
     void* buffer = calloc(1, size);
     auto cb = [](void* buffer, size_t size, void* user) {
-        int w = kTexSize, h = kTexSize;
+        int w = kTexWidth, h = kTexHeight;
         uint32_t* texels = (uint32_t*) buffer;
         goldenPixelValue = texels[0];
         #ifndef IOS
@@ -86,7 +87,7 @@ static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt) {
         #endif
     };
     PixelBufferDescriptor pb(buffer, size, PixelDataFormat::RGBA, PixelDataType::UBYTE, cb);
-    dapi.readPixels(rt, 0, 0, kTexSize, kTexSize, std::move(pb));
+    dapi.readPixels(rt, 0, 0, kTexWidth, kTexHeight, std::move(pb));
 }
 
 TEST_F(BackendTest, FeedbackLoops) {
@@ -124,10 +125,10 @@ TEST_F(BackendTest, FeedbackLoops) {
         Handle<HwTexture> texture = getDriverApi().createTexture(
                     SamplerType::SAMPLER_2D,            // target
                     2,                                  // levels
-                    TextureFormat::RGBA8,               // format
+                    TextureFormat::R11F_G11F_B10F,      // format
                     1,                                  // samples
-                    kTexSize,                           // width
-                    kTexSize,                           // height
+                    kTexWidth,                          // width
+                    kTexHeight,                         // height
                     1,                                  // depth
                     usage);                             // usage
 
@@ -136,8 +137,8 @@ TEST_F(BackendTest, FeedbackLoops) {
         for (uint8_t level = 0; level < 2; level++) {
             renderTargets[level] = getDriverApi().createRenderTarget(
                     TargetBufferFlags::COLOR,
-                    kTexSize / 2,                              // width of miplevel
-                    kTexSize / 2,                              // height of miplevel
+                    kTexWidth / 2,                             // width of miplevel
+                    kTexHeight / 2,                            // height of miplevel
                     1,                                         // samples
                     { texture, level, 0 },                     // color level
                     {},                                        // depth
@@ -145,13 +146,13 @@ TEST_F(BackendTest, FeedbackLoops) {
         }
 
         // Fill the base level of the texture with interesting colors.
-        const size_t size = kTexSize * kTexSize * 4;
+        const size_t size = kTexHeight * kTexWidth * 4;
         uint8_t* buffer = (uint8_t*) malloc(size);
-        for (int r = 0, i = 0; r < kTexSize; r++) {
-            for (int c = 0; c < kTexSize; c++, i += 4) {
+        for (int r = 0, i = 0; r < kTexHeight; r++) {
+            for (int c = 0; c < kTexWidth; c++, i += 4) {
                 buffer[i + 0] = 0x10;
-                buffer[i + 1] = 0xff * r / (kTexSize - 1);
-                buffer[i + 2] = 0xff * c / (kTexSize - 1);
+                buffer[i + 1] = 0xff * r / (kTexHeight - 1);
+                buffer[i + 2] = 0xff * c / (kTexWidth - 1);
                 buffer[i + 3] = 0xf0;
             }
          }
@@ -189,8 +190,8 @@ TEST_F(BackendTest, FeedbackLoops) {
 
         // Downsample pass.
         state.rasterState.disableBlending();
-        params.viewport.width = kTexSize / 2;
-        params.viewport.height = kTexSize / 2;
+        params.viewport.width = kTexWidth / 2;
+        params.viewport.height = kTexHeight / 2;
         state.program = downsampleProgram;
         // getDriverApi().setMinMaxLevels(texture, 0, 0);
         getDriverApi().beginRenderPass(renderTargets[1], params);
