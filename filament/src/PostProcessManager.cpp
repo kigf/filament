@@ -1326,6 +1326,7 @@ FrameGraphId<FrameGraphTexture> PostProcessManager::bloomPass(FrameGraph& fg,
                         .format = outFormat
                 });
                 data.out = builder.write(builder.sample(data.out));
+                // printf("tex %d x %d\n", width, height);
 
                 for (size_t i = 0; i < bloomOptions.levels; i++) {
                     data.outRT[i] = builder.createRenderTarget("Bloom target", {
@@ -1338,7 +1339,8 @@ FrameGraphId<FrameGraphTexture> PostProcessManager::bloomPass(FrameGraph& fg,
                 auto const& material = getPostProcessMaterial("bloomDownsample");
                 FMaterialInstance* mi = material.getMaterialInstance();
 
-                const PipelineState pipeline(material.getPipelineState());
+                PipelineState pipeline(material.getPipelineState());
+                pipeline.rasterState.disableBlending();
 
                 auto hwIn = resources.getTexture(data.in);
                 auto hwOut = resources.getTexture(data.out);
@@ -1347,7 +1349,9 @@ FrameGraphId<FrameGraphTexture> PostProcessManager::bloomPass(FrameGraph& fg,
                 mi->use(driver);
                 mi->setParameter("source", hwIn,  {
                         .filterMag = SamplerMagFilter::LINEAR,
-                        .filterMin = SamplerMinFilter::LINEAR /* level is always 0 */
+                        .filterMin = SamplerMinFilter::LINEAR, /* level is always 0 */
+                        .baseLevel = 1,
+                        .maxLevel = 1,
                 });
                 mi->setParameter("level", 0.0f);
                 driver.setMinMaxLevels(hwIn, 0, 0);
@@ -1362,6 +1366,9 @@ FrameGraphId<FrameGraphTexture> PostProcessManager::bloomPass(FrameGraph& fg,
                     mi->setParameter("resolution", float4{ w, h, 1.0f / w, 1.0f / h });
                     mi->commit(driver);
 
+                    // printf("    %zu %d x %d .... %d x %d\n", i, hwOutRT.params.viewport.width, hwOutRT.params.viewport.height, w, h);
+
+                    // hwOutRT.params.flags.clear = TargetBufferFlags::COLOR;
                     hwOutRT.params.flags.discardStart = TargetBufferFlags::COLOR;
                     hwOutRT.params.flags.discardEnd = TargetBufferFlags::NONE;
                     driver.beginRenderPass(hwOutRT.target, hwOutRT.params);
@@ -1369,9 +1376,12 @@ FrameGraphId<FrameGraphTexture> PostProcessManager::bloomPass(FrameGraph& fg,
                     driver.endRenderPass();
 
                     // prepare the next level
+                    const uint8_t mipConstraint = i + 1;
                     mi->setParameter("source", hwOut,  {
                             .filterMag = SamplerMagFilter::LINEAR,
-                            .filterMin = SamplerMinFilter::LINEAR_MIPMAP_NEAREST
+                            .filterMin = SamplerMinFilter::LINEAR_MIPMAP_NEAREST,
+                            .baseLevel = mipConstraint,
+                            .maxLevel = mipConstraint,
                     });
                     mi->setParameter("level", float(i));
                     driver.setMinMaxLevels(hwIn, i, i);
@@ -1410,12 +1420,15 @@ FrameGraphId<FrameGraphTexture> PostProcessManager::bloomPass(FrameGraph& fg,
                     hwDstRT.params.flags.discardStart = TargetBufferFlags::NONE; // because we'll blend
                     hwDstRT.params.flags.discardEnd = TargetBufferFlags::NONE;
 
+                    const uint8_t mipConstraint = i + 1;
                     auto w = FTexture::valueForLevel(i - 1, outDesc.width);
                     auto h = FTexture::valueForLevel(i - 1, outDesc.height);
                     mi->setParameter("resolution", float4{ w, h, 1.0f / w, 1.0f / h });
                     mi->setParameter("source", hwIn, {
                             .filterMag = SamplerMagFilter::LINEAR,
-                            .filterMin = SamplerMinFilter::LINEAR_MIPMAP_NEAREST
+                            .filterMin = SamplerMinFilter::LINEAR_MIPMAP_NEAREST,
+                            .baseLevel = mipConstraint,
+                            .maxLevel = mipConstraint,
                     });
                     mi->setParameter("level", float(i));
                     driver.setMinMaxLevels(hwIn, i, i);
