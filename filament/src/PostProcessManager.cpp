@@ -1426,7 +1426,7 @@ FrameGraphId<FrameGraphTexture> PostProcessManager::bloomPass(FrameGraph& fg,
                     driver.endRenderPass();
                 }
 
-                driver.setMinMaxLevels(hwIn, 0, 1000);
+                driver.setMinMaxLevels(hwIn, 0, 0x7f);
             });
 
     return bloomUpsamplePass.getData().out;
