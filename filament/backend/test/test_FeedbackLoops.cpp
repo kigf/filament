@@ -160,7 +160,7 @@ TEST_F(BackendTest, FeedbackLoops) {
         PixelBufferDescriptor pb(buffer, size, PixelDataFormat::RGBA, PixelDataType::UBYTE, cb);
 
         // Upload texture data.
-        getDriverApi().update2DImage(texture, 0, 0, 0, kTexSize, kTexSize, std::move(pb));
+        getDriverApi().update2DImage(texture, 0, 0, 0, kTexWidth, kTexHeight, std::move(pb));
 
         RenderPassParams params = {};
         params.viewport.left = 0;
@@ -201,8 +201,8 @@ TEST_F(BackendTest, FeedbackLoops) {
         // Upsample pass.
         state.rasterState.blendFunctionSrcRGB = BlendFunction::SRC_ALPHA;
         state.rasterState.blendFunctionDstRGB = BlendFunction::ONE_MINUS_SRC_ALPHA;
-        params.viewport.width = kTexSize;
-        params.viewport.height = kTexSize;
+        params.viewport.width = kTexWidth;
+        params.viewport.height = kTexHeight;
         state.program = upsampleProgram;
         // getDriverApi().setMinMaxLevels(texture, 1, 1);
         getDriverApi().beginRenderPass(renderTargets[0], params);
@@ -228,7 +228,7 @@ TEST_F(BackendTest, FeedbackLoops) {
     executeCommands();
     getDriver().purge();
 
-    const uint32_t expected = 0x80007f87;
+    const uint32_t expected = 0xff007e87;
     printf("Pixel value is %8.8x, Expected %8.8x\n", goldenPixelValue, expected);
     EXPECT_EQ(goldenPixelValue, expected);
 }
