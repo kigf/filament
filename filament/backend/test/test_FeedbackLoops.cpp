@@ -42,8 +42,13 @@ void main() {
 })";
 
 static std::string downsampleFs = R"(#version 450 core
+precision mediump int; precision highp float;
 layout(location = 0) out vec4 fragColor;
-uniform sampler2D tex;
+layout(location = 0) uniform sampler2D tex;
+uniform Params {
+    highp float sourceLod;
+    highp vec2 fbSize;
+} params;
 void main() {
     vec2 texsize = textureSize(tex, 0);
     float sourceLod = 0.0;
@@ -52,8 +57,13 @@ void main() {
 })";
 
 static std::string upsampleFs = R"(#version 450 core
+precision mediump int; precision highp float;
 layout(location = 0) out vec4 fragColor;
-uniform sampler2D tex;
+layout(location = 0) uniform sampler2D tex;
+uniform Params {
+    highp float sourceLod;
+    highp vec2 fbSize;
+} params;
 void main() {
     vec2 texsize = vec2(textureSize(tex, 0));
     float sourceLod = 1.0;
@@ -71,6 +81,15 @@ namespace test {
 
 using namespace filament;
 using namespace filament::backend;
+using namespace filament::math;
+
+struct ShaderParams {
+    float sourceLod;
+    float2 fbSize;
+};
+
+static void uploadUniforms(DriverApi& dapi, Handle<HwUniformBuffer> ub, ShaderParams params) {
+}
 
 static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt) {
     const size_t size = kTexWidth * kTexHeight * 4;
@@ -105,6 +124,7 @@ TEST_F(BackendTest, FeedbackLoops) {
             Program prog = shaderGen.getProgram();
             Program::Sampler psamplers[] = { utils::CString("tex"), 0, false };
             prog.setSamplerGroup(0, psamplers, sizeof(psamplers) / sizeof(psamplers[0]));
+            prog.setUniformBlock(1, utils::CString("params"));
             downsampleProgram = getDriverApi().createProgram(std::move(prog));
         }
         ProgramHandle upsampleProgram;
@@ -113,6 +133,7 @@ TEST_F(BackendTest, FeedbackLoops) {
             Program prog = shaderGen.getProgram();
             Program::Sampler psamplers[] = { utils::CString("tex"), 0, false };
             prog.setSamplerGroup(0, psamplers, sizeof(psamplers) / sizeof(psamplers[0]));
+            prog.setUniformBlock(1, utils::CString("params"));
             upsampleProgram = getDriverApi().createProgram(std::move(prog));
         }
 
@@ -184,9 +205,15 @@ TEST_F(BackendTest, FeedbackLoops) {
         auto sgroup = getDriverApi().createSamplerGroup(samplers.getSize());
         getDriverApi().updateSamplerGroup(sgroup, std::move(samplers.toCommandStream()));
 
+        auto ubuffer = getDriverApi().createUniformBuffer(12, backend::BufferUsage::STATIC);
+
+        ShaderParams params;
+        uploadUniforms(getDriverApi(), ubuffer, params);
+
         getDriverApi().makeCurrent(swapChain, swapChain);
         getDriverApi().beginFrame(0, 0);
         getDriverApi().bindSamplers(0, sgroup);    
+        getDriverApi().bindUniformBuffer(0, ubuffer);
 
         // Downsample pass.
         state.rasterState.disableBlending();
